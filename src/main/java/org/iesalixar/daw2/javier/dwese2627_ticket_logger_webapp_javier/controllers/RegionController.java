@@ -2,7 +2,12 @@ package org.iesalixar.daw2.javier.dwese2627_ticket_logger_webapp_javier.controll
 
 import jakarta.validation.Valid;
 import org.iesalixar.daw2.javier.dwese2627_ticket_logger_webapp_javier.daos.RegionDAO;
+import org.iesalixar.daw2.javier.dwese2627_ticket_logger_webapp_javier.dtos.RegionCreateDTO;
+import org.iesalixar.daw2.javier.dwese2627_ticket_logger_webapp_javier.dtos.RegionDTO;
+import org.iesalixar.daw2.javier.dwese2627_ticket_logger_webapp_javier.dtos.RegionDetailDTO;
+import org.iesalixar.daw2.javier.dwese2627_ticket_logger_webapp_javier.dtos.RegionUpdateDTO;
 import org.iesalixar.daw2.javier.dwese2627_ticket_logger_webapp_javier.entities.Region;
+import org.iesalixar.daw2.javier.dwese2627_ticket_logger_webapp_javier.mappers.RegionMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,27 +38,59 @@ import java.util.Locale;
         @Autowired
         private MessageSource messageSource;
 
-        /**
-     * Lista todas las regiones y las pasa como atributo al modelo para que sean
-     * accesibles en la vista `region.html`.
-     *
+    /**
+     * @param page número de página (0-based)
+     * @param size tamaño de página (nº de elementos por página)
+     * @param sortField campo por el que se ordenan los resultados (id,code,name)
+     * @param sortDir direccion de ordenación ("asc" o "desc")
      * @param model Objeto del modelo para pasar datos a la vista.
      * @return El nombre de la plantilla Thymeleaf para renderizar la lista de regiones.
      */
     @GetMapping
-    public String listRegions(Model model) {
-        logger.info("Solicitando la lista de todas las regiones...");
-        List<Region> listRegions = null;
+    public String listRegions(
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sortField", defaultValue = "name") String sortField,
+            @RequestParam(name = "sortDir", defaultValue = "asc") String sortDir,
+            Model model) {
+
+        logger.info("Solicitando la lista de regiones... page={}, size={},sortField={},sortDir={}", page, size,sortField,sortDir);
+
+        // Evitar valores negativos o tamaños raros
+        if (page < 0) page = 0;
+        if (size <= 0) size = 10;
+
         try {
-            listRegions = regionDAO.listAllRegions();
-            logger.info("Se han cargado {} regiones.", listRegions.size());
-        } catch (SQLException e) {
-            logger.error("Error al listar las regiones: {}", e.getMessage());
+            long totalElements = regionDAO.countRegions();
+            int totalPages = (int) Math.ceil((double) totalElements / size);
+
+            // Si se pide una página fuera de rango, ajustamos
+            if (totalPages > 0 && page >= totalPages) {
+                page = totalPages - 1;
+            }
+
+            List<Region> listRegions = regionDAO.listRegionsPage(page, size,sortField,sortDir);
+            List<RegionDTO> listRegionsDTOs = RegionMapper.toDTOList(listRegions);
+
+            logger.info("Se han cargado {} regiones en la página {}.", listRegionsDTOs.size(), page);
+
+            model.addAttribute("listRegions", listRegionsDTOs);
+            model.addAttribute("currentPage", page);
+            model.addAttribute("pageSize", size);
+            model.addAttribute("totalPages", totalPages);
+            model.addAttribute("totalElements", totalElements);
+            model.addAttribute("sortField",sortField);
+            model.addAttribute("sortDir",sortDir);
+            model.addAttribute("reverseSortDir","asc".equalsIgnoreCase(sortDir) ? "desc" : "asc");
+
+        } catch (Exception e) {
+            logger.error("Error al listar las regiones: {}", e.getMessage(), e);
             model.addAttribute("errorMessage", "Error al listar las regiones.");
         }
-        model.addAttribute("listRegions", listRegions); // Pasar la lista de regiones al modelo
+
         return "views/region/region-list"; // Nombre de la plantilla Thymeleaf a renderizar
     }
+
     /**
      * Muestra el formulario para crear una nueva región.
      *
@@ -63,7 +100,7 @@ import java.util.Locale;
     @GetMapping("/new")
     public String showNewForm(Model model) {
         logger.info("Mostrando formulario para nueva región.");
-        model.addAttribute("region", new Region()); // Crear un nuevo objeto Region
+        model.addAttribute("region", new RegionCreateDTO()); // Crear un nuevo objeto Region
         return "views/region/region-form"; // Nombre de la plantilla Thymeleaf para el formulario
     }
     /**
@@ -77,17 +114,19 @@ import java.util.Locale;
     public String showEditForm(@RequestParam("id") Long id, Model model) {
         logger.info("Mostrando formulario de edición para la región con ID {}", id);
         Region region = null;
+        RegionUpdateDTO regionDTO = null;
         try {
             region = regionDAO.getRegionById(id);
             if (region == null) {
                 logger.warn("No se encontró la región con ID {}", id);
             }
+            regionDTO = RegionMapper.toUpdateDTO(region);
         } catch (SQLException e) {
             logger.error("Error al obtener la región con ID {}: {}", id, e.getMessage());
             model.addAttribute("errorMessage", "Error al obtener la región.");
         }
 
-        model.addAttribute("region", region);
+        model.addAttribute("region", regionDTO);
         return "views/region/region-form"; // Nombre de la plantilla Thymeleaf para el formulario
     }
     /**
@@ -117,10 +156,11 @@ import java.util.Locale;
      * @param result              Resultado de la validación del formulario.
      * @return Redirección a la lista de regiones.
      */
+
     /**
      * Inserta una nueva región en la base de datos.
      *
-     * @param region              Objeto que contiene los datos del formulario.
+     * @param regionDTO              Objeto que contiene los datos del formulario.
      * @param redirectAttributes  Atributos para mensajes flash de redirección.
      * @param result              Resultado de la validación del formulario.
      * @param locale              Objeto que representa la configuración regional actual del usuario,
@@ -128,22 +168,23 @@ import java.util.Locale;
      * @return Redirección a la lista de regiones.
      */
     @PostMapping("/insert")
-    public String insertRegion(@Valid @ModelAttribute("region") Region region, BindingResult result, RedirectAttributes redirectAttributes, Locale locale) {
-        logger.info("Insertando nueva región con código {}", region.getCode());
+    public String insertRegion(@Valid @ModelAttribute("region") RegionCreateDTO regionDTO, BindingResult result, RedirectAttributes redirectAttributes, Locale locale) {
+        logger.info("Insertando nueva región con código {}", regionDTO.getCode());
         try {
             if (result.hasErrors()) {
                 return "views/region/region-form";  // Devuelve el formulario para mostrar los errores de validación
             }
-            if (regionDAO.existsRegionByCode(region.getCode())) {
-                logger.warn("El código de la región {} ya existe.", region.getCode());
+            if (regionDAO.existsRegionByCode(regionDTO.getCode())) {
+                logger.warn("El código de la región {} ya existe.", regionDTO.getCode());
                 String errorMessage = messageSource.getMessage("msg.region-controller.insert.codeExist", null, locale);
                 redirectAttributes.addFlashAttribute("errorMessage", errorMessage);
                 return "redirect:/regions/new";
             }
+            Region region = RegionMapper.toEntity(regionDTO);
             regionDAO.insertRegion(region);
             logger.info("Región {} insertada con éxito.", region.getCode());
         } catch (Exception e) {
-            logger.error("Error al insertar la región {}: {}", region.getCode(), e.getMessage());
+            logger.error("Error al insertar la región {}: {}", regionDTO.getCode(), e.getMessage());
             String errorMessage = messageSource.getMessage("msg.region-controller.insert.error", null, locale);
             redirectAttributes.addFlashAttribute("errorMessage", errorMessage);
         }
@@ -156,7 +197,7 @@ import java.util.Locale;
     /**
      * Actualiza una región existente en la base de datos.
      *
-     * @param region              Objeto que contiene los datos del formulario.
+     * @param regionDTO              Objeto que contiene los datos del formulario.
      * @param redirectAttributes  Atributos para mensajes flash de redirección
      * @param result              Resultado de la validación del formulario.
      * @param locale              Objeto que representa la configuración regional actual del usuario,
@@ -164,27 +205,70 @@ import java.util.Locale;
      * @return Redirección a la lista de regiones.
      */
     @PostMapping("/update")
-    public String updateRegion(@Valid @ModelAttribute("region") Region region,  BindingResult result, RedirectAttributes redirectAttributes,  Locale locale) {
-        logger.info("Actualizando región con ID {}", region.getId());
+    public String updateRegion(@Valid @ModelAttribute("region") RegionUpdateDTO regionDTO,  BindingResult result, RedirectAttributes redirectAttributes,  Locale locale) {
+        logger.info("Actualizando región con ID {}", regionDTO.getId());
         try {
             if (result.hasErrors()) {
                 return "views/region/region-form";  // Devuelve el formulario para mostrar los errores de validación
             }
-            if (regionDAO.existsRegionByCodeAndNotId(region.getCode(), region.getId())) {
-                logger.warn("El código de la región {} ya existe para otra región.", region.getCode());
+            if (regionDAO.existsRegionByCodeAndNotId(regionDTO.getCode(), regionDTO.getId())) {
+                logger.warn("El código de la región {} ya existe para otra región.", regionDTO.getCode());
                 String errorMessage = messageSource.getMessage("msg.region-controller.update.codeExist", null, locale);
                 redirectAttributes.addFlashAttribute("errorMessage", errorMessage);
-                return "redirect:/regions/edit?id=" + region.getId();
+                return "redirect:/regions/edit?id=" + regionDTO.getId();
             }
+            Region region = regionDAO.getRegionById(regionDTO.getId());
+            if (region == null){
+                logger.warn("No se encontró la región con ID {}",regionDTO.getId());
+                String notFound = messageSource.getMessage("msg.region-controller.detail.notFound", null, locale);
+                redirectAttributes.addFlashAttribute("errorMessage",notFound);
+                return "redirect:/regions";
+            }
+            RegionMapper.copyToExistingEntity(regionDTO, region);
             regionDAO.updateRegion(region);
             logger.info("Región con ID {} actualizada con éxito.", region.getId());
         } catch (Exception e) {
-            logger.error("Error al actualizar la región con ID {}: {}", region.getId(), e.getMessage());
+            logger.error("Error al actualizar la región con ID {}: {}", regionDTO.getId(), e.getMessage());
             String errorMessage = messageSource.getMessage("msg.region-controller.update.error", null, locale);
             redirectAttributes.addFlashAttribute("errorMessage", errorMessage);
         }
         return "redirect:/regions"; // Redirigir a la lista de regiones
     }
+    /**
+     * Muestra el detalle de una región específica, incluyendo su lista de provincias asociadas.
+     *
+     * @param id                 Identificador único de la región que se desea consultar.
+     * @param model              Modelo de Spring MVC utilizado para pasar datos a la vista.
+     * @param redirectAttributes Objeto para enviar mensajes flash de error o información al redirigir.
+     * @param locale             Configuración regional actual del usuario (para internacionalización de mensajes).
+     * @return El nombre de la plantilla Thymeleaf que muestra el detalle de la región
+     *         ({@code views/region/region-detail}), o una redirección a {@code /regions} en caso de error.
+     */
+    @GetMapping("/detail")
+    public String showDetail(@RequestParam("id") Long id,
+                             Model model,
+                             RedirectAttributes redirectAttributes,
+                             Locale locale) {
+        logger.info("Mostrando detalle de la región con ID {}", id);
+        try {
+            // Cargar la región junto con sus provincias (fetch) para evitar LazyInitializationException
+            Region region = regionDAO.getRegionById(id);
+            if (region == null) {
+                String msg = messageSource.getMessage("msg.region-controller.detail.notFound", null, locale);
+                redirectAttributes.addFlashAttribute("errorMessage", msg);
+                return "redirect:/regions";
+            }
+            RegionDetailDTO regionDTO = RegionMapper.toDetailDTO(region);
+            model.addAttribute("region", regionDTO);
+            return "views/region/region-detail";
+        } catch (Exception e) {
+            logger.error("Error al obtener el detalle de la región {}: {}", id, e.getMessage(), e);
+            String msg = messageSource.getMessage("msg.region-controller.detail.error", null, locale);
+            redirectAttributes.addFlashAttribute("errorMessage", msg);
+            return "redirect:/regions";
+        }
+    }
+
 
 
 

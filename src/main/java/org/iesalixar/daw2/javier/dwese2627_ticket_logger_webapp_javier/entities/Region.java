@@ -1,10 +1,14 @@
 package org.iesalixar.daw2.javier.dwese2627_ticket_logger_webapp_javier.entities;
+import jakarta.persistence.*;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import jakarta.validation.constraints.NotNull;
+import org.springframework.data.annotation.Id;
+
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 /**
@@ -33,27 +37,42 @@ import jakarta.validation.constraints.NotNull;
 // Este constructor es útil cuando necesitas crear una instancia completamente inicializada de `Region`.
 // Ejemplo: new Region(1, "01", "Andalucía");
 
-
+@Entity // Marca esta clase como una entidad gestionada por JPA.
+@Table(name = "regions") //Especifica el nombre de la tabla asociada a esta entidad.
 public class Region {
 
 
     // Campo que almacena el identificador único de la región. Este campo suele ser autogenerado
     // por la base de datos, lo que lo convierte en un buen candidato para una clave primaria.
     // No añadimos validación en el ID porque en este caso puede ser nulo al insertarse
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-
     // Campo que almacena el código de la región, normalmente una cadena corta que identifica la región.
     // Ejemplo: "01" para Andalucía.
-    @NotEmpty(message = "{msg.region.code.notEmpty}")
-    @Size(max = 2, message = "{msg.region.code.size}")
+
+    @Column(name = "code",nullable = false,length = 2)
     private String code;
 
-
-    // Campo que almacena el nombre completo de la región, como "Andalucía" o "Cataluña".
-    @NotEmpty(message = "{msg.region.name.notEmpty}")
-    @Size(max = 100, message = "{msg.region.name.notEmpty}")
+    @Column(name = "name",nullable = false,length = 180)
     private String name;
+
+    /**
+     * Lista de provincias pertenecientes a la región.
+     * - LAZY: no se cargan hasta que se accede a 'provinces'.
+     * - mappedBy: el dueño de la relación es Province.region.
+     * - Con cascade ALL: Así se borrarían las provincias asociadas a la región si se elimina la región.
+     */
+    @OneToMany(
+            mappedBy = "region",
+            fetch = FetchType.LAZY,
+            cascade = {CascadeType.ALL},
+            orphanRemoval = false
+    )
+    @ToString.Exclude              // Evita bucles en toString()
+    @EqualsAndHashCode.Exclude     // Evita ciclos en equals/hashCode
+    private List<Province> provinces = new ArrayList<>();
+
 
 
     /**
