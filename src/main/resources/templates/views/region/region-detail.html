@@ -9,10 +9,12 @@
 <!-- Insertar el fragmento del header -->
 <header th:replace="fragments/header :: header"></header>
 
+
+
 <main class="form-page">
     <div class="form-card">
 
-        <!-- Titulo: Detalle Región: {nombre} -->
+        <!-- Título: Detalle Región: {nombre} -->
         <h1>
             <span th:text="#{msg.region-detail.title}"></span>:
             <span th:text="${region.name}"></span>
@@ -32,44 +34,49 @@
                 <dd class="col-sm-9" th:text="${region.name}"></dd>
             </dl>
         </div>
-        <!-- Provincias -->
-        <div class="mt-4">
-            <h2 class="h5" th:text="#{msg.region-detail.section.provinces}"></h2>
+    <!-- Provincias -->
+    <div class="mt-4">
+        <h2 class="h5" th:text="#{msg.region-detail.section.provinces}"></h2>
 
-            <!-- Estado vacío -->
-            <div class="alert alert-info" th:if="${#lists.isEmpty(region.provinces)}"
-                 th:text="#{msg.region-detail.provinces.empty}">
-            </div>
+        <!-- Estado vacío -->
+        <div class="alert alert-info" th:if="${#lists.isEmpty(region.provinces)}">
+            <span th:text="#{msg.region-detail.provinces.empty}"></span>
+        </div>
 
-            <!-- Tabla de provincias -->
-            <div th:if="${!#lists.isEmpty(region.provinces)}" class="table-responsive">
-                <table class="table table-striped table-hover align-middle">
-                    <thead>
-                    <tr>
-                        <th scope="col" th:text="#{msg.region-detail.provinces.col.id}"></th>
-                        <th scope="col" th:text="#{msg.region-detail.provinces.col.code}"></th>
-                        <th scope="col" th:text="#{msg.region-detail.provinces.col.name}"></th>
-                        <th scope="col" class="text-end" th:text="#{msg.region-detail.provinces.col.actions}"></th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr th:each="province : ${region.provinces}">
-                        <td th:text="${province.id}"></td>
-                        <td th:text="${province.code}"></td>
-                        <td th:text="${province.name}"></td>
-                        <td class="text-end">
-                            <a class="btn btn-sm btn-outline-primary"
-                               th:href="@{/provinces/detail(id=${province.id})}"
-                               th:text="#{msg.region-detail.viewDetail}">
-                            </a>
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
+        <!-- Tabla de provincias -->
+        <div th:if="${!#lists.isEmpty(region.provinces)}" class="table-responsive">
+            <table class="table table-striped table-hover align-middle">
+                <thead>
+                <tr>
+                    <th scope="col" th:text="#{msg.region-detail.provinces.col.id}"></th>
+                    <th scope="col" th:text="#{msg.region-detail.provinces.col.code}"></th>
+                    <th scope="col" th:text="#{msg.region-detail.provinces.col.name}"></th>
+                    <th scope="col" class="text-end" th:text="#{msg.region-detail.provinces.col.actions}"></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="province : ${region.provinces}">
+                    <td th:text="${province.id}"></td>
+                    <td th:text="${province.code}"></td>
+                    <td th:text="${province.name}"></td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-primary"
+                           th:href="@{/provinces/detail(id=${province.id})}"
+                           th:text="#{msg.region-detail.viewDetail}">
+                        </a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
         </div>
     </div>
+    </div>
+
 </main>
+
+
+
+<!-- Insertar el fragmento del footer -->
 <footer th:replace="fragments/footer :: footer"></footer>
 
 
