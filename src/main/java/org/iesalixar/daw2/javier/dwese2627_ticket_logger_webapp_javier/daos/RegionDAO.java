@@ -16,6 +16,9 @@ public interface RegionDAO {
     boolean existsRegionByCode(String code);
     boolean existsRegionByCodeAndNotId(String code, Long id);
 
+    Region getRegionByIdWithProvinces(Long id);
+
+    List<Region> listRegionPage(int pageNumber, int pageSize, String sortField, String sortDir);
 }
 
 
