@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(#{msg.userProfile.title})}"></head>
+
+<body class="d-flex flex-column h-100">
+
+<!-- Insertar el fragmento del header -->
+<header th:replace="~{fragments/header :: header}"></header>
+
+<!-- Contenido dinámico -->
+<main class="form-page">
+    <div class="form-card form-card-wide">
+        <h1 th:text="#{msg.userProfile.title}">Mi perfil</h1>
+        <p class="text-muted text-center" th:text="#{msg.userProfile.subtitle}"></p>
+
+        <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+
+        <!-- Paso 1: imagen actual del usuario (si no existe, avatar por defecto) -->
+        <div class="text-center mb-3">
+            <img th:src="${userProfileForm.profileImage != null and !#strings.isEmpty(userProfileForm.profileImage)}
+                         ? @{${userProfileForm.profileImage}} : @{/images/avatar.svg}"
+                 alt="Foto de perfil" class="avatar-lg">
+        </div>
+
+        <!-- Paso 2: cualquier formulario con subida de ficheros necesita enctype="multipart/form-data" -->
+        <form th:action="@{/profile/update}" th:object="${userProfileForm}" method="post"
+              enctype="multipart/form-data" class="text-start">
+
+            <input type="hidden" th:field="*{userId}">
+            <input type="hidden" th:field="*{profileImage}">
+            <input type="hidden" th:field="*{email}">
+
+            <!-- Email (solo lectura) -->
+            <div class="mb-3">
+                <label for="emailRO" class="form-label" th:text="#{msg.userProfile.field.email}"></label>
+                <input type="email" id="emailRO" class="form-control" th:value="*{email}" disabled>
+            </div>
+
+            <!-- Nombre -->
+            <div class="mb-3">
+                <label for="firstName" class="form-label" th:text="#{msg.userProfile.field.firstName}"></label>
+                <input type="text" th:field="*{firstName}" id="firstName" class="form-control" maxlength="60"
+                       th:classappend="${#fields.hasErrors('firstName')} ? 'is-invalid'" required>
+                <div th:if="${#fields.hasErrors('firstName')}" class="text-danger" th:errors="*{firstName}"></div>
+            </div>
+
+            <!-- Apellidos -->
+            <div class="mb-3">
+                <label for="lastName" class="form-label" th:text="#{msg.userProfile.field.lastName}"></label>
+                <input type="text" th:field="*{lastName}" id="lastName" class="form-control" maxlength="80"
+                       th:classappend="${#fields.hasErrors('lastName')} ? 'is-invalid'" required>
+                <div th:if="${#fields.hasErrors('lastName')}" class="text-danger" th:errors="*{lastName}"></div>
+            </div>
+
+            <!-- Teléfono -->
+            <div class="mb-3">
+                <label for="phoneNumber" class="form-label" th:text="#{msg.userProfile.field.phoneNumber}"></label>
+                <input type="tel" th:field="*{phoneNumber}" id="phoneNumber" class="form-control" maxlength="30"
+                       th:classappend="${#fields.hasErrors('phoneNumber')} ? 'is-invalid'">
+                <div th:if="${#fields.hasErrors('phoneNumber')}" class="text-danger" th:errors="*{phoneNumber}"></div>
+            </div>
+
+            <!-- Imagen actual (ruta guardada) -->
+            <div class="mb-3">
+                <label for="profileImageRO" class="form-label" th:text="#{msg.userProfile.field.profileImage}"></label>
+                <input type="text" id="profileImageRO" class="form-control" th:value="*{profileImage}"
+                       th:placeholder="#{msg.userProfile.field.profileImage.placeholder}" disabled>
+            </div>
+
+            <!-- Paso 3: subida de una nueva imagen (campo independiente profileImageFile) -->
+            <div class="mb-3">
+                <label for="profileImageFile" class="form-label" th:text="#{msg.userProfile.field.profileImageUpload}"></label>
+                <input type="file" id="profileImageFile" name="profileImageFile" class="form-control" accept="image/*">
+                <div class="form-text" th:text="#{msg.userProfile.field.profileImageUpload.help}"></div>
+            </div>
+
+            <!-- Biografía -->
+            <div class="mb-3">
+                <label for="bio" class="form-label" th:text="#{msg.userProfile.field.bio}"></label>
+                <textarea th:field="*{bio}" id="bio" class="form-control" maxlength="500"
+                          th:classappend="${#fields.hasErrors('bio')} ? 'is-invalid'"></textarea>
+                <div th:if="${#fields.hasErrors('bio')}" class="text-danger" th:errors="*{bio}"></div>
+            </div>
+
+            <!-- Idioma preferido -->
+            <div class="mb-3">
+                <label for="locale" class="form-label" th:text="#{msg.userProfile.field.locale}"></label>
+                <select th:field="*{locale}" id="locale" class="form-select">
+                    <option value="">--</option>
+                    <option value="es_ES">Español (es_ES)</option>
+                    <option value="en_US">English (en_US)</option>
+                </select>
+                <div th:if="${#fields.hasErrors('locale')}" class="text-danger" th:errors="*{locale}"></div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" th:text="#{msg.userProfile.action.save}"></button>
+            <a th:href="@{/}" class="btn btn-secondary" th:text="#{msg.userProfile.action.back}"></a>
+        </form>
+    </div>
+</main>
+
+<!-- Insertar el fragmento del footer -->
+<footer th:replace="~{fragments/footer :: footer}"></footer>
+
+<div th:replace="~{fragments/scripts :: scripts}"></div>
+
+</body>
+</html>

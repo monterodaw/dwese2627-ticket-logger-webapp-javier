@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/head :: head(#{msg.role-list.title})}"></head>
+
+<body class="d-flex flex-column h-100">
+
+<!-- Insertar el fragmento del header -->
+<header th:replace="~{fragments/header :: header}"></header>
+
+<!-- Contenido dinámico -->
+<main class="list-page">
+    <div class="list-card">
+        <h1 th:text="#{msg.role-list.title}"></h1>
+
+        <a th:href="@{/roles/new}" class="btn btn-success" th:text="#{msg.role-list.add}"></a>
+
+        <div th:if="${errorMessage}" th:text="${errorMessage}" class="alert alert-danger mt-3"></div>
+        <div th:if="${successMessage}" th:text="${successMessage}" class="alert alert-success mt-3"></div>
+
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped mt-3 align-middle">
+                <thead>
+                <tr>
+                    <!-- ID -->
+                    <th>
+                        <a class="text-decoration-none"
+                           th:href="@{/roles(
+                                page=${currentPage},
+                                size=${pageSize},
+                                sortField='id',
+                                sortDir=${sortField == 'id' ? reverseSortDir : 'asc'}
+                           )}">
+                            <span th:text="#{msg.role-list.id}"></span>
+                            <span class="ms-1" th:if="${sortField == 'id'}" th:text="${sortDir == 'asc'} ? '▲' : '▼'"></span>
+                        </a>
+                    </th>
+                    <!-- Nombre técnico -->
+                    <th>
+                        <a class="text-decoration-none"
+                           th:href="@{/roles(
+                                page=${currentPage},
+                                size=${pageSize},
+                                sortField='name',
+                                sortDir=${sortField == 'name' ? reverseSortDir : 'asc'}
+                           )}">
+                            <span th:text="#{msg.role-list.name}"></span>
+                            <span class="ms-1" th:if="${sortField == 'name'}" th:text="${sortDir == 'asc'} ? '▲' : '▼'"></span>
+                        </a>
+                    </th>
+                    <!-- Nombre visible -->
+                    <th>
+                        <a class="text-decoration-none"
+                           th:href="@{/roles(
+                                page=${currentPage},
+                                size=${pageSize},
+                                sortField='displayName',
+                                sortDir=${sortField == 'displayName' ? reverseSortDir : 'asc'}
+                           )}">
+                            <span th:text="#{msg.role-list.displayName}"></span>
+                            <span class="ms-1" th:if="${sortField == 'displayName'}" th:text="${sortDir == 'asc'} ? '▲' : '▼'"></span>
+                        </a>
+                    </th>
+                    <th th:text="#{msg.role-list.description}"></th>
+                    <th th:text="#{msg.role-list.actions}"></th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:if="${#lists.isEmpty(listRoles)}">
+                    <td colspan="5" class="text-center text-muted" th:text="#{msg.role-list.empty}"></td>
+                </tr>
+                <tr th:each="role : ${listRoles}">
+                    <td th:text="${role.id}"></td>
+                    <td th:text="${role.name}"></td>
+                    <td th:text="${role.displayName}"></td>
+                    <td th:text="${role.description}"></td>
+                    <td class="text-nowrap">
+                        <a th:href="@{/roles/detail(id=${role.id})}" class="btn btn-info btn-sm"
+                           th:text="#{msg.role-list.detail}"></a>
+                        <a th:href="@{/roles/edit(id=${role.id})}" class="btn btn-primary btn-sm"
+                           th:text="#{msg.role-list.edit}"></a>
+                        <form th:action="@{/roles/delete}" method="post" class="d-inline"
+                              th:attr="data-confirm=#{msg.role-list.confirm}"
+                              onsubmit="return confirm(this.dataset.confirm);">
+                            <input type="hidden" name="id" th:value="${role.id}">
+                            <button type="submit" class="btn btn-danger btn-sm"
+                                    th:text="#{msg.role-list.delete}"></button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        <div class="d-flex justify-content-between align-items-center mt-3"
+             th:if="${totalPages > 0}">
+
+            <!-- Info de página -->
+            <div>
+                <!-- "Página X de Y (N registros en total)" -->
+                <span th:text="#{msg.pagination.info(${currentPage} + 1, ${totalPages}, ${totalElements})}"></span>
+            </div>
+
+            <!-- Controles de paginación -->
+            <nav th:aria-label="#{msg.pagination.aria.label}">
+                <ul class="pagination mb-0">
+
+                    <!-- Botón Anterior -->
+                    <li class="page-item"
+                        th:classappend="${currentPage == 0} ? ' disabled'">
+                        <a class="page-link"
+                           th:href="@{/roles(page=${currentPage - 1}, size=${pageSize}, sortField=${sortField}, sortDir=${sortDir})}"
+                           th:aria-label="#{msg.pagination.prev}">
+                            <span aria-hidden="true">&laquo;</span>
+                        </a>
+                    </li>
+
+                    <!-- Números de página -->
+                    <li class="page-item"
+                        th:each="i : ${#numbers.sequence(0, totalPages - 1)}"
+                        th:classappend="${i} == ${currentPage} ? ' active'">
+                        <a class="page-link"
+                           th:text="${i + 1}"
+                           th:href="@{/roles(page=${i}, size=${pageSize}, sortField=${sortField}, sortDir=${sortDir})}"></a>
+                    </li>
+
+                    <!-- Botón Siguiente -->
+                    <li class="page-item"
+                        th:classappend="${currentPage == totalPages - 1} ? ' disabled'">
+                        <a class="page-link"
+                           th:href="@{/roles(page=${currentPage + 1}, size=${pageSize}, sortField=${sortField}, sortDir=${sortDir})}"
+                           th:aria-label="#{msg.pagination.next}">
+                            <span aria-hidden="true">&raquo;</span>
+                        </a>
+                    </li>
+
+                </ul>
+            </nav>
+        </div>
+
+        <a th:href="@{/}" class="btn btn-secondary mt-3" th:text="#{msg.role-form.returnback}"></a>
+    </div>
+</main>
+
+<!-- Insertar el fragmento del footer -->
+<footer th:replace="~{fragments/footer :: footer}"></footer>
+
+<div th:replace="~{fragments/scripts :: scripts}"></div>
+
+</body>
+</html>
